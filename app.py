@@ -1056,25 +1056,26 @@ def export_current_view_to_excel_bytes(df: pd.DataFrame) -> bytes:
 
 
 def render_ladder_html(df: pd.DataFrame, max_teams: int = 48, change_map: dict[str, dict[str, str]] | None = None) -> str:
+    """Compact live ladder: Team + best Back/Lay only, with decimal row and size row."""
     css = """
     <style>
       .ladder-wrap { width: 100%; overflow-x: auto; }
-      table.ladder { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 16px; }
-      table.ladder th { border: 1px solid #777; padding: 5px 7px; text-align: center; font-weight: 700; background: #e9eef5; position: sticky; top: 0; z-index: 3; }
-      table.ladder td { border: 1px solid #c8c8c8; padding: 3px 7px; text-align: center; min-width: 78px; height: 22px; }
-      table.ladder td.team { text-align: left; font-weight: 700; min-width: 145px; padding-left: 12px; background: #ffffff; }
-      table.ladder td.team-blank { background: #ffffff; }
-      table.ladder td.back { background: #cfe2f3; font-weight: 700; }
-      table.ladder td.lay { background: #f4cccc; font-weight: 700; }
-      table.ladder td.back-dec { background: #cfe2f3; font-weight: 400; }
-      table.ladder td.lay-dec { background: #f4cccc; font-weight: 400; }
-      table.ladder td.size { background: #ffffff; font-size: 14px; font-weight: 400; }
+      table.ladder { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 10pt; table-layout: fixed; }
+      table.ladder th { border: 1px solid #777; padding: 4px 5px; text-align: center; font-weight: 700; background: #e9eef5; position: sticky; top: 0; z-index: 3; height: 24px; }
+      table.ladder td { border: 1px solid #c8c8c8; padding: 2px 5px; text-align: center; width: 78px; height: 22px; box-sizing: border-box; }
+      table.ladder td.team { text-align: left; font-weight: 700; width: 145px; padding-left: 12px; background: #ffffff; }
+      table.ladder td.team-blank { background: #ffffff; width: 145px; }
+      table.ladder td.back { background: #CCECFF; font-weight: 700; }
+      table.ladder td.lay { background: #FF89B0; font-weight: 700; }
+      table.ladder td.back-dec { background: #CCECFF; font-weight: 400; }
+      table.ladder td.lay-dec { background: #FF89B0; font-weight: 400; }
+      table.ladder td.size { background: #ffffff; font-size: 9pt; font-weight: 400; }
       table.ladder td.up { box-shadow: inset 0 0 0 9999px rgba(147, 196, 125, 0.65); }
       table.ladder td.down { box-shadow: inset 0 0 0 9999px rgba(255, 229, 153, 0.75); }
       tr.group-start td { border-top: 2px solid #777; }
     </style>
     """
-    headers = ["Team", "Back 3", "Back 2", "Back 1", "Lay 1", "Lay 2", "Lay 3"]
+    headers = ["Team", "Back 1", "Lay 1"]
     out = [css, '<div class="ladder-wrap"><table class="ladder"><thead><tr>']
     for h in headers:
         out.append(f"<th>{html.escape(h)}</th>")
@@ -1088,27 +1089,22 @@ def render_ladder_html(df: pd.DataFrame, max_teams: int = 48, change_map: dict[s
         team_changes = change_map.get(team_raw, {})
         out.append('<tr class="group-start">')
         out.append(f'<td class="team">{team}</td>')
-        for col, cls in [
-            ("back_3", "back"), ("back_2", "back"), ("back_1", "back"),
-            ("lay_1", "lay"), ("lay_2", "lay"), ("lay_3", "lay"),
-        ]:
-            change_cls = team_changes.get(col, "")
-            full_cls = f"{cls} {change_cls}" if change_cls else cls
-            out.append(f'<td class="{full_cls}">{fmt_price(r.get(col))}</td>')
+        back_cls = "back" + (f" {team_changes.get('back_1')}" if team_changes.get("back_1") else "")
+        lay_cls = "lay" + (f" {team_changes.get('lay_1')}" if team_changes.get("lay_1") else "")
+        out.append(f'<td class="{back_cls}">{fmt_price(r.get("back_1"))}</td>')
+        out.append(f'<td class="{lay_cls}">{fmt_price(r.get("lay_1"))}</td>')
         out.append("</tr>")
 
         out.append("<tr>")
         out.append('<td class="team-blank"></td>')
-        out.append('<td></td><td></td>')
         out.append(f'<td class="back-dec">{fmt_decimal(r.get("back_1_decimal"))}</td>')
         out.append(f'<td class="lay-dec">{fmt_decimal(r.get("lay_1_decimal"))}</td>')
-        out.append('<td></td><td></td>')
         out.append("</tr>")
 
         out.append("<tr>")
         out.append('<td class="team-blank"></td>')
-        for col in ["back_3_size", "back_2_size", "back_1_size", "lay_1_size", "lay_2_size", "lay_3_size"]:
-            out.append(f'<td class="size">{fmt_size(r.get(col))}</td>')
+        out.append(f'<td class="size">{fmt_size(r.get("back_1_size"))}</td>')
+        out.append(f'<td class="size">{fmt_size(r.get("lay_1_size"))}</td>')
         out.append("</tr>")
 
     out.append("</tbody></table></div>")
@@ -1160,15 +1156,20 @@ def maybe_update_price_history(displayed_df: pd.DataFrame) -> list[dict[str, Any
 
 
 def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[str, Any]]) -> str:
+    """Snapshot history aligned to live ladder: 3 rows per team, Back/Lay columns per snapshot."""
     css = """
     <style>
       .history-wrap { width: 100%; overflow-x: auto; }
-      table.history { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 14px; }
-      table.history th { border: 1px solid #777; padding: 4px 6px; text-align: center; font-weight: 700; background: #e9eef5; position: sticky; top: 0; z-index: 3; }
-      table.history td { border: 1px solid #c8c8c8; padding: 2px 6px; text-align: center; min-width: 72px; height: 20px; }
-      table.history td.team { text-align: left; font-weight: 700; min-width: 90px; padding-left: 8px; background: #ffffff; }
-      table.history td.price { font-weight: 700; background: #f7f7f7; }
-      table.history td.dec { font-weight: 400; background: #ffffff; color: #333333; }
+      table.history { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 10pt; table-layout: fixed; }
+      table.history th { border: 1px solid #777; padding: 4px 5px; text-align: center; font-weight: 700; background: #e9eef5; height: 24px; }
+      table.history td { border: 1px solid #c8c8c8; padding: 2px 5px; text-align: center; width: 68px; height: 22px; box-sizing: border-box; }
+      table.history td.team { text-align: left; font-weight: 700; width: 145px; padding-left: 12px; background: #ffffff; }
+      table.history td.team-blank { background: #ffffff; width: 145px; }
+      table.history td.back { font-weight: 700; background: #CCECFF; }
+      table.history td.lay { font-weight: 700; background: #FF89B0; }
+      table.history td.back-dec { font-weight: 400; background: #CCECFF; }
+      table.history td.lay-dec { font-weight: 400; background: #FF89B0; }
+      table.history td.blank { background: #ffffff; }
       tr.history-group-start td { border-top: 2px solid #777; }
     </style>
     """
@@ -1176,9 +1177,11 @@ def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[
     out.append("<th>Team</th>")
     if history:
         for snap in history:
-            out.append(f"<th>{html.escape(str(snap.get('label') or ''))}</th>")
+            label = html.escape(str(snap.get("label") or ""))
+            out.append(f'<th>{label}<br>Back</th>')
+            out.append(f'<th>{label}<br>Lay</th>')
     else:
-        out.append("<th>No snapshots yet</th>")
+        out.append('<th>Back</th><th>Lay</th>')
     out.append("</tr></thead><tbody>")
 
     for _, row in displayed_df.iterrows():
@@ -1189,23 +1192,29 @@ def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[
         if history:
             for snap in history:
                 snap_row = (snap.get("rows") or {}).get(team_raw, {})
-                back = fmt_price(snap_row.get("back_1"))
-                lay = fmt_price(snap_row.get("lay_1"))
-                out.append(f'<td class="price">{html.escape(back)} / {html.escape(lay)}</td>')
+                out.append(f'<td class="back">{html.escape(fmt_price(snap_row.get("back_1")))}</td>')
+                out.append(f'<td class="lay">{html.escape(fmt_price(snap_row.get("lay_1")))}</td>')
         else:
-            out.append('<td class="price"></td>')
+            out.append('<td class="back"></td><td class="lay"></td>')
         out.append("</tr>")
 
         out.append("<tr>")
-        out.append('<td class="team"></td>')
+        out.append('<td class="team-blank"></td>')
         if history:
             for snap in history:
                 snap_row = (snap.get("rows") or {}).get(team_raw, {})
-                back_dec = fmt_decimal(snap_row.get("back_1_decimal"))
-                lay_dec = fmt_decimal(snap_row.get("lay_1_decimal"))
-                out.append(f'<td class="dec">{html.escape(back_dec)} / {html.escape(lay_dec)}</td>')
+                out.append(f'<td class="back-dec">{html.escape(fmt_decimal(snap_row.get("back_1_decimal")))}</td>')
+                out.append(f'<td class="lay-dec">{html.escape(fmt_decimal(snap_row.get("lay_1_decimal")))}</td>')
         else:
-            out.append('<td class="dec"></td>')
+            out.append('<td class="back-dec"></td><td class="lay-dec"></td>')
+        out.append("</tr>")
+
+        # Blank third row so each team group lines up with the 3-row live-price layout.
+        out.append("<tr>")
+        out.append('<td class="team-blank"></td>')
+        col_count = len(history) * 2 if history else 2
+        for _ in range(col_count):
+            out.append('<td class="blank"></td>')
         out.append("</tr>")
 
     out.append("</tbody></table></div>")
@@ -1213,7 +1222,14 @@ def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[
 
 def main_app() -> None:
     st.set_page_config(page_title="Polymarket World Cup Ladder", layout="wide")
-    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v12")
+    st.markdown("""
+    <style>
+      [data-testid="stSidebar"] { width: 16rem !important; min-width: 16rem !important; }
+      [data-testid="stSidebar"] > div:first-child { width: 16rem !important; min-width: 16rem !important; }
+      section.main > div { padding-left: 1rem; padding-right: 1rem; }
+    </style>
+    """, unsafe_allow_html=True)
+    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v13")
 
     with st.sidebar:
         st.subheader("Settings")
@@ -1262,13 +1278,13 @@ def main_app() -> None:
     )
     st.caption("Price-change highlighting: green = moved up since previous refresh; yellow = moved down.")
 
-    left_col, right_col = st.columns([3, 2], gap="small")
+    left_col, right_col = st.columns([1, 3], gap="small")
     with left_col:
         st.markdown("#### Live prices")
         st.markdown(render_ladder_html(displayed_df, max_teams=max_teams, change_map=change_map), unsafe_allow_html=True)
     with right_col:
         st.markdown("#### 30-minute snapshots")
-        st.caption("Latest snapshot is nearest the live table. Each cell shows Back 1 / Lay 1, with decimal conversion underneath.")
+        st.caption("Latest snapshot is nearest the live table. Each snapshot has separate Back/Lay columns. Decimal conversion is underneath. Latest snapshot is nearest the live table.")
         st.markdown(render_snapshot_history_html(displayed_df, history), unsafe_allow_html=True)
 
     with st.expander("Raw data checks"):

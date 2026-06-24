@@ -1,5 +1,5 @@
 streamlit
 streamlit-autorefresh
-requests
 pandas
+requests
 xlsxwriter
