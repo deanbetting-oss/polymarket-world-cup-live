@@ -1063,7 +1063,7 @@ def render_ladder_html(df: pd.DataFrame, max_teams: int = 48, change_map: dict[s
     """
     css = """
     <style>
-      .ladder-wrap { width: 100%; overflow-x: auto; }
+      .ladder-wrap { width: 100%; max-width: 100%; overflow-x: auto; }
       table.ladder { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 12pt; table-layout: fixed; }
       table.ladder th { border: 1px solid #777; padding: 4px 5px; text-align: center; font-weight: 700; background: #e9eef5; position: sticky; top: 0; z-index: 3; height: 24px; box-sizing: border-box; }
       table.ladder th.small-head { font-size: 10pt; }
@@ -1072,11 +1072,11 @@ def render_ladder_html(df: pd.DataFrame, max_teams: int = 48, change_map: dict[s
       table.ladder td.team { text-align: left; font-weight: 700; width: 145px; padding-left: 12px; background: #ffffff; font-size: 12pt; }
       table.ladder td.team-blank { background: #ffffff; width: 145px; }
       table.ladder td.back { background: #CCECFF; font-weight: 700; }
-      table.ladder td.lay { background: #FFB6D1; font-weight: 700; }
+      table.ladder td.lay { background: #ED6F65; font-weight: 700; }
       table.ladder td.edge-price { font-size: 10pt; }
       table.ladder td.main-price { font-size: 12pt; }
       table.ladder td.back-dec { background: #CCECFF; font-weight: 400; font-size: 12pt; }
-      table.ladder td.lay-dec { background: #FFB6D1; font-weight: 400; font-size: 12pt; }
+      table.ladder td.lay-dec { background: #ED6F65; font-weight: 400; font-size: 12pt; }
       table.ladder td.size { background: #ffffff; font-size: 9pt; font-weight: 400; }
       table.ladder td.up { box-shadow: inset 0 0 0 9999px rgba(147, 196, 125, 0.65); }
       table.ladder td.down { box-shadow: inset 0 0 0 9999px rgba(255, 229, 153, 0.75); }
@@ -1174,16 +1174,16 @@ def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[
     """Snapshot history aligned to live ladder: 3 rows per team, Back/Lay columns per snapshot."""
     css = """
     <style>
-      .history-wrap { width: 100%; overflow-x: auto; }
+      .history-wrap { width: 100%; overflow-x: auto; margin-left: 26px; }
       table.history { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 10pt; table-layout: fixed; }
       table.history th { border: 1px solid #777; padding: 4px 5px; text-align: center; font-weight: 700; background: #e9eef5; height: 24px; box-sizing: border-box; }
       table.history td { border: 1px solid #c8c8c8; padding: 2px 5px; text-align: center; width: 68px; height: 22px; box-sizing: border-box; }
       table.history td.team { text-align: left; font-weight: 700; width: 145px; padding-left: 12px; background: #ffffff; }
       table.history td.team-blank { background: #ffffff; width: 145px; }
       table.history td.back { font-weight: 700; background: #CCECFF; }
-      table.history td.lay { font-weight: 700; background: #FFB6D1; }
+      table.history td.lay { font-weight: 700; background: #ED6F65; }
       table.history td.back-dec { font-weight: 400; background: #CCECFF; }
-      table.history td.lay-dec { font-weight: 400; background: #FFB6D1; }
+      table.history td.lay-dec { font-weight: 400; background: #ED6F65; }
       table.history td.blank { background: #ffffff; }
       tr.history-group-start td { border-top: 2px solid #777; }
     </style>
@@ -1244,7 +1244,7 @@ def main_app() -> None:
       section.main > div { padding-left: 1rem; padding-right: 1rem; }
     </style>
     """, unsafe_allow_html=True)
-    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v14")
+    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v15")
 
     with st.sidebar:
         st.subheader("Settings")
@@ -1296,15 +1296,16 @@ def main_app() -> None:
     st.markdown("""
     <style>
       .table-section-title { font-size: 16px; font-weight: 700; margin: 0 0 0.45rem 0; line-height: 1.2; height: 22px; }
+      .snapshot-section-title { margin-left: 26px; }
     </style>
     """, unsafe_allow_html=True)
 
-    left_col, right_col = st.columns([2.2, 3], gap="small")
+    left_col, right_col = st.columns([3.0, 2.6], gap="large")
     with left_col:
         st.markdown('<div class="table-section-title">Live prices</div>', unsafe_allow_html=True)
         st.markdown(render_ladder_html(displayed_df, max_teams=max_teams, change_map=change_map), unsafe_allow_html=True)
     with right_col:
-        st.markdown('<div class="table-section-title">30-minute snapshots</div>', unsafe_allow_html=True)
+        st.markdown('<div class="table-section-title snapshot-section-title">30-minute snapshots</div>', unsafe_allow_html=True)
         st.markdown(render_snapshot_history_html(displayed_df, history), unsafe_allow_html=True)
 
     st.caption("Snapshot table is in-session only. Latest 30-minute snapshot is nearest the live table; older snapshots move right.")
