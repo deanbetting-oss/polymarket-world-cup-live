@@ -1072,11 +1072,11 @@ def render_ladder_html(df: pd.DataFrame, max_teams: int = 48, change_map: dict[s
       table.ladder td.team { text-align: left; font-weight: 700; width: 145px; padding-left: 12px; background: #ffffff; font-size: 12pt; }
       table.ladder td.team-blank { background: #ffffff; width: 145px; }
       table.ladder td.back { background: #CCECFF; font-weight: 700; }
-      table.ladder td.lay { background: #ED6F65; font-weight: 700; }
+      table.ladder td.lay { background: #F78077; font-weight: 700; }
       table.ladder td.edge-price { font-size: 10pt; }
       table.ladder td.main-price { font-size: 12pt; }
       table.ladder td.back-dec { background: #CCECFF; font-weight: 400; font-size: 12pt; }
-      table.ladder td.lay-dec { background: #ED6F65; font-weight: 400; font-size: 12pt; }
+      table.ladder td.lay-dec { background: #F78077; font-weight: 400; font-size: 12pt; }
       table.ladder td.size { background: #ffffff; font-size: 9pt; font-weight: 400; }
       table.ladder td.up { box-shadow: inset 0 0 0 9999px rgba(147, 196, 125, 0.65); }
       table.ladder td.down { box-shadow: inset 0 0 0 9999px rgba(255, 229, 153, 0.75); }
@@ -1181,10 +1181,11 @@ def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[
       table.history td.team { text-align: left; font-weight: 700; width: 145px; padding-left: 12px; background: #ffffff; }
       table.history td.team-blank { background: #ffffff; width: 145px; }
       table.history td.back { font-weight: 700; background: #CCECFF; }
-      table.history td.lay { font-weight: 700; background: #ED6F65; }
+      table.history td.lay { font-weight: 700; background: #F78077; }
       table.history td.back-dec { font-weight: 400; background: #CCECFF; }
-      table.history td.lay-dec { font-weight: 400; background: #ED6F65; }
+      table.history td.lay-dec { font-weight: 400; background: #F78077; }
       table.history td.blank { background: #ffffff; }
+      tr.history-spacer td { border-top: none !important; border-bottom: none !important; }
       tr.history-group-start td { border-top: 2px solid #777; }
     </style>
     """
@@ -1225,7 +1226,9 @@ def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[
         out.append("</tr>")
 
         # Blank third row so each team group lines up with the 3-row live-price layout.
-        out.append("<tr>")
+        # The spacer has no top/bottom borders so there is no extra thin line
+        # between the decimal row and the next team's thick separator.
+        out.append('<tr class="history-spacer">')
         out.append('<td class="team-blank"></td>')
         col_count = len(history) * 2 if history else 2
         for _ in range(col_count):
@@ -1244,7 +1247,7 @@ def main_app() -> None:
       section.main > div { padding-left: 1rem; padding-right: 1rem; }
     </style>
     """, unsafe_allow_html=True)
-    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v15")
+    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v16")
 
     with st.sidebar:
         st.subheader("Settings")
