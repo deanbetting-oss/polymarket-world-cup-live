@@ -1072,11 +1072,11 @@ def render_ladder_html(df: pd.DataFrame, max_teams: int = 48, change_map: dict[s
       table.ladder td.team { text-align: left; font-weight: 700; width: 145px; padding-left: 12px; background: #ffffff; font-size: 12pt; }
       table.ladder td.team-blank { background: #ffffff; width: 145px; }
       table.ladder td.back { background: #CCECFF; font-weight: 700; }
-      table.ladder td.lay { background: #F78077; font-weight: 700; }
+      table.ladder td.lay { background: #FF9A92; font-weight: 700; }
       table.ladder td.edge-price { font-size: 10pt; }
       table.ladder td.main-price { font-size: 12pt; }
       table.ladder td.back-dec { background: #CCECFF; font-weight: 400; font-size: 12pt; }
-      table.ladder td.lay-dec { background: #F78077; font-weight: 400; font-size: 12pt; }
+      table.ladder td.lay-dec { background: #FF9A92; font-weight: 400; font-size: 12pt; }
       table.ladder td.size { background: #ffffff; font-size: 9pt; font-weight: 400; }
       table.ladder td.up { box-shadow: inset 0 0 0 9999px rgba(147, 196, 125, 0.65); }
       table.ladder td.down { box-shadow: inset 0 0 0 9999px rgba(255, 229, 153, 0.75); }
@@ -1177,16 +1177,18 @@ def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[
       .history-wrap { width: 100%; overflow-x: auto; margin-left: 26px; }
       table.history { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 10pt; table-layout: fixed; }
       table.history th { border: 1px solid #777; padding: 4px 5px; text-align: center; font-weight: 700; background: #e9eef5; height: 24px; box-sizing: border-box; }
-      table.history td { border: 1px solid #c8c8c8; padding: 2px 5px; text-align: center; width: 68px; height: 22px; box-sizing: border-box; }
-      table.history td.team { text-align: left; font-weight: 700; width: 145px; padding-left: 12px; background: #ffffff; }
-      table.history td.team-blank { background: #ffffff; width: 145px; }
+      table.history th:first-child { width: 105px; min-width: 105px; }
+      table.history td { border: 1px solid #c8c8c8; padding: 2px 5px; text-align: center; width: 68px; height: 22px; min-height: 22px; box-sizing: border-box; }
+      table.history td.team { text-align: left; font-weight: 700; width: 105px; padding-left: 12px; background: #ffffff; }
+      table.history td.team-blank { background: #ffffff; width: 105px; }
       table.history td.back { font-weight: 700; background: #CCECFF; }
-      table.history td.lay { font-weight: 700; background: #F78077; }
+      table.history td.lay { font-weight: 700; background: #FF9A92; }
       table.history td.back-dec { font-weight: 400; background: #CCECFF; }
-      table.history td.lay-dec { font-weight: 400; background: #F78077; }
+      table.history td.lay-dec { font-weight: 400; background: #FF9A92; }
       table.history td.blank { background: #ffffff; }
-      tr.history-spacer td { border-top: none !important; border-bottom: none !important; }
-      tr.history-group-start td { border-top: 2px solid #777; }
+      tr.history-decimal td { border-bottom: none !important; }
+      tr.history-spacer td { border: none !important; background: #ffffff; height: 22px; min-height: 22px; padding-top: 2px; padding-bottom: 2px; }
+      tr.history-group-start td { border-top: 2px solid #777 !important; }
     </style>
     """
     out = [css, '<div class="history-wrap"><table class="history"><thead><tr>']
@@ -1214,7 +1216,7 @@ def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[
             out.append('<td class="back"></td><td class="lay"></td>')
         out.append("</tr>")
 
-        out.append("<tr>")
+        out.append('<tr class="history-decimal">')
         out.append('<td class="team-blank"></td>')
         if history:
             for snap in history:
@@ -1247,7 +1249,7 @@ def main_app() -> None:
       section.main > div { padding-left: 1rem; padding-right: 1rem; }
     </style>
     """, unsafe_allow_html=True)
-    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v16")
+    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v18")
 
     with st.sidebar:
         st.subheader("Settings")
