@@ -1115,9 +1115,105 @@ def render_ladder_html(df: pd.DataFrame, max_teams: int = 48, change_map: dict[s
     return "".join(out)
 
 
+
+
+SNAPSHOT_INTERVAL_SECONDS = 30 * 60
+MAX_SNAPSHOT_COLUMNS = 8
+
+
+def maybe_update_price_history(displayed_df: pd.DataFrame) -> list[dict[str, Any]]:
+    """Keep an in-session rolling snapshot history every 30 minutes.
+
+    This does not write to disk. It lasts only while the app session is alive.
+    Latest snapshot is kept first so it displays nearest to the live ladder.
+    """
+    now_ts = time.time()
+    history = st.session_state.get("price_history_snapshots", [])
+    last_ts = st.session_state.get("last_price_history_ts")
+
+    should_add = last_ts is None or (now_ts - float(last_ts)) >= SNAPSHOT_INTERVAL_SECONDS
+    if not should_add:
+        return history
+
+    snap_rows: dict[str, dict[str, Any]] = {}
+    for _, row in displayed_df.iterrows():
+        team = str(row.get("team") or "")
+        if not team:
+            continue
+        snap_rows[team] = {
+            "back_1": row.get("back_1"),
+            "lay_1": row.get("lay_1"),
+            "back_1_decimal": row.get("back_1_decimal"),
+            "lay_1_decimal": row.get("lay_1_decimal"),
+        }
+
+    snapshot = {
+        "timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "label": datetime.now().strftime("%H:%M"),
+        "rows": snap_rows,
+    }
+    history = [snapshot] + list(history)
+    history = history[:MAX_SNAPSHOT_COLUMNS]
+    st.session_state["price_history_snapshots"] = history
+    st.session_state["last_price_history_ts"] = now_ts
+    return history
+
+
+def render_snapshot_history_html(displayed_df: pd.DataFrame, history: list[dict[str, Any]]) -> str:
+    css = """
+    <style>
+      .history-wrap { width: 100%; overflow-x: auto; }
+      table.history { border-collapse: collapse; font-family: Calibri, Arial, sans-serif; font-size: 14px; }
+      table.history th { border: 1px solid #777; padding: 4px 6px; text-align: center; font-weight: 700; background: #e9eef5; position: sticky; top: 0; z-index: 3; }
+      table.history td { border: 1px solid #c8c8c8; padding: 2px 6px; text-align: center; min-width: 72px; height: 20px; }
+      table.history td.team { text-align: left; font-weight: 700; min-width: 90px; padding-left: 8px; background: #ffffff; }
+      table.history td.price { font-weight: 700; background: #f7f7f7; }
+      table.history td.dec { font-weight: 400; background: #ffffff; color: #333333; }
+      tr.history-group-start td { border-top: 2px solid #777; }
+    </style>
+    """
+    out = [css, '<div class="history-wrap"><table class="history"><thead><tr>']
+    out.append("<th>Team</th>")
+    if history:
+        for snap in history:
+            out.append(f"<th>{html.escape(str(snap.get('label') or ''))}</th>")
+    else:
+        out.append("<th>No snapshots yet</th>")
+    out.append("</tr></thead><tbody>")
+
+    for _, row in displayed_df.iterrows():
+        team_raw = str(row.get("team") or "")
+        team = html.escape(team_raw)
+        out.append('<tr class="history-group-start">')
+        out.append(f'<td class="team">{team}</td>')
+        if history:
+            for snap in history:
+                snap_row = (snap.get("rows") or {}).get(team_raw, {})
+                back = fmt_price(snap_row.get("back_1"))
+                lay = fmt_price(snap_row.get("lay_1"))
+                out.append(f'<td class="price">{html.escape(back)} / {html.escape(lay)}</td>')
+        else:
+            out.append('<td class="price"></td>')
+        out.append("</tr>")
+
+        out.append("<tr>")
+        out.append('<td class="team"></td>')
+        if history:
+            for snap in history:
+                snap_row = (snap.get("rows") or {}).get(team_raw, {})
+                back_dec = fmt_decimal(snap_row.get("back_1_decimal"))
+                lay_dec = fmt_decimal(snap_row.get("lay_1_decimal"))
+                out.append(f'<td class="dec">{html.escape(back_dec)} / {html.escape(lay_dec)}</td>')
+        else:
+            out.append('<td class="dec"></td>')
+        out.append("</tr>")
+
+    out.append("</tbody></table></div>")
+    return "".join(out)
+
 def main_app() -> None:
     st.set_page_config(page_title="Polymarket World Cup Ladder", layout="wide")
-    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v11")
+    st.title("Polymarket World Cup Winner Ladder — Qualified Teams Live View v12")
 
     with st.sidebar:
         st.subheader("Settings")
@@ -1132,6 +1228,7 @@ def main_app() -> None:
             index=0,
         )
         st.caption("Read-only public Polymarket data. Locked to the World Cup Winner event. Fetches displayed teams only, YES token books only, and fetches books in parallel.")
+        st.caption("Snapshot table is in-session only: it records a new column roughly every 30 minutes while the app is awake.")
 
     st_autorefresh(interval=refresh_seconds * 1000, key="polymarket_refresh")
 
@@ -1148,6 +1245,7 @@ def main_app() -> None:
     previous_snapshot = st.session_state.get("previous_price_snapshot", {})
     change_map = build_change_map(displayed_df, previous_snapshot)
     st.session_state["previous_price_snapshot"] = snapshot_prices(displayed_df)
+    history = maybe_update_price_history(displayed_df)
 
     fetched = now_utc_iso()
     title = first_present(event, ("title", "name", "question"), "Matched event")
@@ -1163,12 +1261,20 @@ def main_app() -> None:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     st.caption("Price-change highlighting: green = moved up since previous refresh; yellow = moved down.")
-    st.markdown(render_ladder_html(displayed_df, max_teams=max_teams, change_map=change_map), unsafe_allow_html=True)
+
+    left_col, right_col = st.columns([3, 2], gap="small")
+    with left_col:
+        st.markdown("#### Live prices")
+        st.markdown(render_ladder_html(displayed_df, max_teams=max_teams, change_map=change_map), unsafe_allow_html=True)
+    with right_col:
+        st.markdown("#### 30-minute snapshots")
+        st.caption("Latest snapshot is nearest the live table. Each cell shows Back 1 / Lay 1, with decimal conversion underneath.")
+        st.markdown(render_snapshot_history_html(displayed_df, history), unsafe_allow_html=True)
 
     with st.expander("Raw data checks"):
         st.write("Matched event slug:", slug)
         st.write("Markets:", len(markets_df), "YES-token price rows:", len(prices_df), "Order-book rows:", len(book_df))
-        st.dataframe(displayed_df, use_container_width=True, hide_index=True)
+        st.dataframe(displayed_df, width="stretch", hide_index=True)
 
 
 if __name__ == "__main__":
